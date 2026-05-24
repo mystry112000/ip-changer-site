@@ -71,69 +71,69 @@
 
     <div class="cmd-card">
       <h3>1. Install Dependencies</h3>
-      <div class="cmd">sudo apt update && sudo apt install -y curl tor jq xxd netcat-openbsd</div>
+      <div class="cmd-wrapper"><div class="cmd">sudo apt update && sudo apt install -y curl tor jq xxd netcat-openbsd</div><button class="copy-btn" onclick="copyCmd(this)">📋</button></div>
       <p>Installs: <code>curl</code> (fetch IP), <code>tor</code> (the network), <code>jq</code> (parse JSON), <code>xxd</code> (hex auth), <code>netcat</code> (send signal)</p>
     </div>
 
     <div class="cmd-card">
       <h3>2. Start Tor Service</h3>
-      <div class="cmd">sudo systemctl start tor</div>
+      <div class="cmd-wrapper"><div class="cmd">sudo systemctl start tor</div><button class="copy-btn" onclick="copyCmd(this)">📋</button></div>
       <p>Starts Tor in the background. It listens on port <strong>9050</strong> (SOCKS proxy) and <strong>9051</strong> (ControlPort for commands).</p>
     </div>
 
     <div class="cmd-card">
       <h3>3. Enable ControlPort (if not already)</h3>
-      <div class="cmd">echo -e "ControlPort 9051\nCookieAuthentication 1\nCookieAuthFileGroupReadable 1" | sudo tee -a /etc/tor/torrc && sudo systemctl restart tor</div>
+      <div class="cmd-wrapper"><div class="cmd">echo -e "ControlPort 9051\nCookieAuthentication 1\nCookieAuthFileGroupReadable 1" | sudo tee -a /etc/tor/torrc && sudo systemctl restart tor</div><button class="copy-btn" onclick="copyCmd(this)">📋</button></div>
       <p>Without ControlPort, you can't send <code>NEWNYM</code>. This config enables it and restarts Tor.</p>
     </div>
 
     <div class="cmd-card">
       <h3>4. Change IP — One Time</h3>
-      <div class="cmd">COOKIE=$(sudo xxd -ps /var/run/tor/control.authcookie | tr -d '\n'); printf 'AUTHENTICATE %s\r\nSIGNAL NEWNYM\r\nQUIT\r\n' "$COOKIE" | nc 127.0.0.1 9051; curl --socks5-hostname 127.0.0.1:9050 https://check.torproject.org/api/ip | jq -r .IP</div>
+      <div class="cmd-wrapper"><div class="cmd">COOKIE=$(sudo xxd -ps /var/run/tor/control.authcookie | tr -d '\n'); printf 'AUTHENTICATE %s\r\nSIGNAL NEWNYM\r\nQUIT\r\n' "$COOKIE" | nc 127.0.0.1 9051; curl --socks5-hostname 127.0.0.1:9050 https://check.torproject.org/api/ip | jq -r .IP</div><button class="copy-btn" onclick="copyCmd(this)">📋</button></div>
       <p>Reads the auth cookie, authenticates to ControlPort, sends NEWNYM signal, then queries your new IP via Tor's SOCKS proxy.</p>
     </div>
 
     <div class="cmd-card">
       <h3>5. Automatic Loop (Every N seconds)</h3>
-      <div class="cmd">while true; do
+      <div class="cmd-wrapper"><div class="cmd">while true; do
   COOKIE=$(sudo xxd -ps /var/run/tor/control.authcookie | tr -d '\n')
   printf 'AUTHENTICATE %s\r\nSIGNAL NEWNYM\r\nQUIT\r\n' "$COOKIE" | nc 127.0.0.1 9051
   IP=$(curl -s --socks5-hostname 127.0.0.1:9050 https://check.torproject.org/api/ip | jq -r .IP)
   echo "$(date) - New IP: $IP"
   sleep 10
-done</div>
+done</div><button class="copy-btn" onclick="copyCmd(this)">📋</button></div>
       <p>Infinite loop: change IP → print it → wait N seconds → repeat. Change <code>sleep 10</code> to any interval.</p>
     </div>
 
     <div class="cmd-card">
       <h3>6. Route Your Browser Through Tor</h3>
-      <div class="cmd"># Firefox: Settings → Network → Proxy → SOCKS5 → 127.0.0.1:9050
+      <div class="cmd-wrapper"><div class="cmd"># Firefox: Settings → Network → Proxy → SOCKS5 → 127.0.0.1:9050
 # Or via terminal:
 export http_proxy=socks5://127.0.0.1:9050
 export https_proxy=socks5://127.0.0.1:9050
-curl ifconfig.me  # Now shows Tor exit IP</div>
+curl ifconfig.me  # Now shows Tor exit IP</div><button class="copy-btn" onclick="copyCmd(this)">📋</button></div>
       <p>Set your system/browser proxy to Tor's SOCKS5 address and all traffic flows through Tor.</p>
     </div>
 
     <div class="cmd-card">
       <h3>7. Install as System Service (Runs at Boot)</h3>
-      <div class="cmd">sudo cp change_tor_ip.sh /home/$USER/
+      <div class="cmd-wrapper"><div class="cmd">sudo cp change_tor_ip.sh /home/$USER/
 sudo chmod +x /home/$USER/change_tor_ip.sh
 sudo cp change-tor-ip.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now change-tor-ip.service</div>
+sudo systemctl enable --now change-tor-ip.service</div><button class="copy-btn" onclick="copyCmd(this)">📋</button></div>
       <p>Installs as a systemd service so IP rotation runs automatically on boot in the background.</p>
     </div>
 
     <div class="cmd-card">
       <h3>8. Check Service Status</h3>
-      <div class="cmd">sudo systemctl status change-tor-ip.service</div>
+      <div class="cmd-wrapper"><div class="cmd">sudo systemctl status change-tor-ip.service</div><button class="copy-btn" onclick="copyCmd(this)">📋</button></div>
       <p>Shows if the service is running and the last few log lines.</p>
     </div>
 
     <div class="cmd-card">
       <h3>9. Stop the Service</h3>
-      <div class="cmd">sudo systemctl stop change-tor-ip.service</div>
+      <div class="cmd-wrapper"><div class="cmd">sudo systemctl stop change-tor-ip.service</div><button class="copy-btn" onclick="copyCmd(this)">📋</button></div>
       <p>Stops the IP rotation until you start it again or reboot.</p>
     </div>
   </section>
@@ -163,10 +163,10 @@ sudo systemctl enable --now change-tor-ip.service</div>
   <section id="install">
     <h2>Quick Start</h2>
     <div class="install-box">
-      <div class="cmd">git clone https://github.com/techchipnet/ip-changer.git
+      <div class="cmd-wrapper"><div class="cmd">git clone https://github.com/techchipnet/ip-changer.git
 cd ip-changer
 chmod +x ip-changer.sh
-sudo ./ip-changer.sh</div>
+sudo ./ip-changer.sh</div><button class="copy-btn" onclick="copyCmd(this)">📋</button></div>
       <p class="install-note">Then enter your desired interval in seconds (default: 10). The script installs everything and starts rotating immediately.</p>
       <p class="install-note"><strong>Note:</strong> The script has two bugs — <code>$HOME</code> missing in <code>change_tor_ip.sh:11</code> (should be <code>$HOME</code>) and the service file hardcodes <code>/home/anil/</code> — edit it to your username.</p>
     </div>

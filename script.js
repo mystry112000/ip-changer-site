@@ -76,6 +76,20 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   });
 });
 
+// Copy command to clipboard
+function copyCmd(btn) {
+  const cmd = btn.previousElementSibling;
+  const text = cmd.textContent.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✅';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '📋';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
 // Navbar hide/show on scroll
 let lastY = window.scrollY;
 window.addEventListener('scroll', () => {

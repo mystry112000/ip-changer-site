@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IP Changer - Rotate Your IP via Tor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <canvas id="bgCanvas"></canvas>
+
+  <nav id="navbar">
+    <div class="nav-inner">
+      <span class="logo">🔄 IP Changer</span>
+      <ul class="nav-links">
+        <li><a href="#home">Home</a></li>
+        <li><a href="#how">How It Works</a></li>
+        <li><a href="#commands">Commands</a></li>
+        <li><a href="#demo">Live Demo</a></li>
+        <li><a href="#install">Install</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <section id="home">
+    <div class="hero">
+      <h1 class="glitch" data-text="IP Changer">IP Changer</h1>
+      <p class="subtitle">Automatically rotate your IP address using the <strong>Tor network</strong></p>
+      <p class="desc">Every few seconds — a new IP. Stay anonymous, bypass restrictions, test geo-blocked content.</p>
+      <a href="#how" class="btn">How It Works ↓</a>
+    </div>
+  </section>
+
+  <section id="how">
+    <h2>How It Works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Tor Network</h3>
+        <p>Your traffic bounces through three random Tor nodes (entry, middle, exit). The exit node's IP is what websites see.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>ControlPort (9051)</h3>
+        <p>The script sends a <code>SIGNAL NEWNYM</code> command to Tor's control port — Tor immediately picks a new circuit with a new exit IP.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Automatic Loop</h3>
+        <p>This repeats every N seconds (you choose). Each cycle = fresh IP from a different exit node anywhere in the world.</p>
+      </div>
+    </div>
+    <div class="diagram">
+      <pre>
+        You → Tor Entry → Tor Middle → Tor Exit 🌍
+                                        ↓
+                                  New IP appears
+                                        ↓
+                                SIGNAL NEWNYM
+                                        ↓
+                              Tor picks NEW exit
+                                        ↓
+                                  Another IP!
+      </pre>
+    </div>
+  </section>
+
+  <section id="commands">
+    <h2>All Commands — Explained</h2>
+
+    <div class="cmd-card">
+      <h3>1. Install Dependencies</h3>
+      <div class="cmd">sudo apt update && sudo apt install -y curl tor jq xxd netcat-openbsd</div>
+      <p>Installs: <code>curl</code> (fetch IP), <code>tor</code> (the network), <code>jq</code> (parse JSON), <code>xxd</code> (hex auth), <code>netcat</code> (send signal)</p>
+    </div>
+
+    <div class="cmd-card">
+      <h3>2. Start Tor Service</h3>
+      <div class="cmd">sudo systemctl start tor</div>
+      <p>Starts Tor in the background. It listens on port <strong>9050</strong> (SOCKS proxy) and <strong>9051</strong> (ControlPort for commands).</p>
+    </div>
+
+    <div class="cmd-card">
+      <h3>3. Enable ControlPort (if not already)</h3>
+      <div class="cmd">echo -e "ControlPort 9051\nCookieAuthentication 1\nCookieAuthFileGroupReadable 1" | sudo tee -a /etc/tor/torrc && sudo systemctl restart tor</div>
+      <p>Without ControlPort, you can't send <code>NEWNYM</code>. This config enables it and restarts Tor.</p>
+    </div>
+
+    <div class="cmd-card">
+      <h3>4. Change IP — One Time</h3>
+      <div class="cmd">COOKIE=$(sudo xxd -ps /var/run/tor/control.authcookie | tr -d '\n'); printf 'AUTHENTICATE %s\r\nSIGNAL NEWNYM\r\nQUIT\r\n' "$COOKIE" | nc 127.0.0.1 9051; curl --socks5-hostname 127.0.0.1:9050 https://check.torproject.org/api/ip | jq -r .IP</div>
+      <p>Reads the auth cookie, authenticates to ControlPort, sends NEWNYM signal, then queries your new IP via Tor's SOCKS proxy.</p>
+    </div>
+
+    <div class="cmd-card">
+      <h3>5. Automatic Loop (Every N seconds)</h3>
+      <div class="cmd">while true; do
+  COOKIE=$(sudo xxd -ps /var/run/tor/control.authcookie | tr -d '\n')
+  printf 'AUTHENTICATE %s\r\nSIGNAL NEWNYM\r\nQUIT\r\n' "$COOKIE" | nc 127.0.0.1 9051
+  IP=$(curl -s --socks5-hostname 127.0.0.1:9050 https://check.torproject.org/api/ip | jq -r .IP)
+  echo "$(date) - New IP: $IP"
+  sleep 10
+done</div>
+      <p>Infinite loop: change IP → print it → wait N seconds → repeat. Change <code>sleep 10</code> to any interval.</p>
+    </div>
+
+    <div class="cmd-card">
+      <h3>6. Route Your Browser Through Tor</h3>
+      <div class="cmd"># Firefox: Settings → Network → Proxy → SOCKS5 → 127.0.0.1:9050
+# Or via terminal:
+export http_proxy=socks5://127.0.0.1:9050
+export https_proxy=socks5://127.0.0.1:9050
+curl ifconfig.me  # Now shows Tor exit IP</div>
+      <p>Set your system/browser proxy to Tor's SOCKS5 address and all traffic flows through Tor.</p>
+    </div>
+
+    <div class="cmd-card">
+      <h3>7. Install as System Service (Runs at Boot)</h3>
+      <div class="cmd">sudo cp change_tor_ip.sh /home/$USER/
+sudo chmod +x /home/$USER/change_tor_ip.sh
+sudo cp change-tor-ip.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now change-tor-ip.service</div>
+      <p>Installs as a systemd service so IP rotation runs automatically on boot in the background.</p>
+    </div>
+
+    <div class="cmd-card">
+      <h3>8. Check Service Status</h3>
+      <div class="cmd">sudo systemctl status change-tor-ip.service</div>
+      <p>Shows if the service is running and the last few log lines.</p>
+    </div>
+
+    <div class="cmd-card">
+      <h3>9. Stop the Service</h3>
+      <div class="cmd">sudo systemctl stop change-tor-ip.service</div>
+      <p>Stops the IP rotation until you start it again or reboot.</p>
+    </div>
+  </section>
+
+  <section id="demo">
+    <h2>Why Use IP Changer?</h2>
+    <div class="use-cases">
+      <div class="card">
+        <h3>🛡️ Anonymity</h3>
+        <p>Websites can't track your real IP. Each request can come from a different country.</p>
+      </div>
+      <div class="card">
+        <h3>🌍 Bypass Geo-blocks</h3>
+        <p>Access region-locked content by switching to an exit node in the allowed country.</p>
+      </div>
+      <div class="card">
+        <h3>🧪 Web Scraping</h3>
+        <p>Avoid rate-limiting by rotating IPs during automated data collection.</p>
+      </div>
+      <div class="card">
+        <h3>🔬 Pentesting</h3>
+        <p>Test how your application behaves under different IPs without using a VPN.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Quick Start</h2>
+    <div class="install-box">
+      <div class="cmd">git clone https://github.com/techchipnet/ip-changer.git
+cd ip-changer
+chmod +x ip-changer.sh
+sudo ./ip-changer.sh</div>
+      <p class="install-note">Then enter your desired interval in seconds (default: 10). The script installs everything and starts rotating immediately.</p>
+      <p class="install-note"><strong>Note:</strong> The script has two bugs — <code>$HOME</code> missing in <code>change_tor_ip.sh:11</code> (should be <code>$HOME</code>) and the service file hardcodes <code>/home/anil/</code> — edit it to your username.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>IP Changer by <a href="https://youtube.com/techchipnet" target="_blank">TechChip</a> — Licensed under MIT</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
